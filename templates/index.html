@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractional Reserve Banking Calculator</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        html {
+            height: auto;
+        }
+
+        body {
+            height: auto;
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 50px;
+            padding: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 80%;
+            padding: 20px;
+            margin-top: 10px;
+            flex-direction: column;
+        }
+
+        .flex-section {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .form-section,
+        .output-section {
+            width: 48%;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            margin: 10px 6px 0px 0px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        input[type="number"],
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #333333;
+            background-color: #262626;
+            color: #ffffff;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            width: 100%;
+            background-color: #28a745;
+            border: none;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #218838;
+        }
+
+        .output-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #ffffff;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #downloadBtn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 20px;
+        }
+
+        #downloadBtn:hover {
+            background-color: #218838;
+        }
+
+        .input-value-label {
+            border-radius: 4px;
+            background-color: #000000;
+            margin-bottom: 0px;
+            padding: 3px;
+        }
+
+        .result {
+            max-height: 300px;
+            overflow-y: scroll;
+            background-color: #000000;
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .summary-section {
+            height: auto;
+            margin-top: 15px;
+            padding: 20px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            overflow: visible;
+            position: relative;
+        }
+
+        .summary-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .summary-statistics {
+            color: #ffffff;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .stat-box {
+            padding: 10px 15px;
+            background-color: #3a3a3a;
+            border-radius: 6px;
+            text-align: center;
+            width: 30%;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            justify-content: space-around;
+        }
+
+        #myPlot,
+        #myPlot2,
+        #myPlot3 {
+            width: 100%;
+            height: 420px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="flex-section">
+            <div class="form-section">
+                <h1>Fractional Reserve Banking System Calculator</h1>
+                <form method="POST">
+                    <label for="initial_deposit">Initial Deposit Value:</label>
+                    <input type="number" step="1" name="initial_deposit" required>
+
+                    <label for="fractional_reserve">Fractional Reserve Value (%):</label>
+                    <input type="number" step="0.01" name="fractional_reserve" required>
+
+                    <input type="submit" value="Calculate">
+                </form>
+
+                {% if error %}
+                <div class="error">{{ error }}</div>
+                {% endif %}
+            </div>
+
+            <div class="output-section">
+                <div class="output-title">
+                    Output:
+                    <button id="downloadBtn" onclick="downloadData()">Download Chart Data</button>
+                </div>
+                <div class="input-value-label">
+                    <ul>
+                        {% for key, value in request.form.items() %}
+                        <span><strong>{{ "Initial Deposit Value" if key == "initial_deposit" else "Fractional Reserve Value (%)" if key == "fractional_reserve" else key }}:</strong> {{ value }}</span>&nbsp;&nbsp;
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if result %}
+                <div class="result">
+                    <ul>
+                        {% for line in result %}
+                        <li>{{ line }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-title">Summary Statistics</div>
+            <div class="summary-statistics">
+                <div class="stat-box">
+                    <strong>Number of Iterations:</strong><br>
+                    <span id="endNumber">{{ end_number }}</span>
+                </div>
+                <div class="stat-box">
+                    <strong>Total Value:</strong><br>
+                    <span id="totalValue">{{ total_value }}</span>
+                </div>
+                <div class="stat-box">
+                    <strong>Multiplicative Change:</strong><br>
+                    <span id="multiplicativeChange">{{ multiplicative_change }}</span>
+                </div>
+            </div>
+            <div id="myPlot"></div> 
+            <div id="myPlot2"></div> 
+            <div id="myPlot3"></div> 
+        </div>
+    </div>
+
+    <script>
+
+        // Verify backend data received
+        var chartData = {{ Sum_Total | tojson | safe }};
+        var chartData2 = {{ Value_Change | tojson | safe }};
+        var chartData3 = {{ Multiplicative_Value_Change | tojson | safe }};
+        var ranks = {{ ranks | tojson | safe }};
+
+        // Explicitly make sure data is under JS array form
+        var chartData = Array.from(chartData);
+        var chartData2 = Array.from(chartData2);
+        var chartData3 = Array.from(chartData3);
+        var ranks = Array.from(ranks);
+
+        console.log("Parsed chartData:", chartData);
+        console.log("Parsed chartData2:", chartData2);
+        console.log("Parsed chartData2:", chartData2);
+        console.log("Parsed chartData3:", chartData3);
+        console.log("Parsed ranks:", ranks);
+
+        console.log("Is chartData an array? ", Array.isArray(chartData));
+        console.log("Is chartData2 an array? ", Array.isArray(chartData2));
+        console.log("Is chartData3 an array? ", Array.isArray(chartData3));
+        console.log("Is ranks an array? ", Array.isArray(ranks));
+
+        //Chart1
+        if (chartData.length > 0 && ranks.length > 0) {
+            var trace = {
+                x: ranks,
+                y: chartData,
+                type: 'scatter',
+                    mode: 'lines+markers',
+                line: {
+                    color: 'rgba(75, 192, 192, 1)',
+                    width: 2
+                },
+                marker: {
+                    size: 4
+                },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(75, 192, 192, 0.2)'
+            };
+
+            var layout = {
+                title: 'Total Value vs Rank',
+                xaxis: {
+                    title: 'Rank'
+                },
+                yaxis: {
+                    title: 'Total Value'
+                },
+                margin: { t: 50 },
+                responsive: true  // Make chart responsive
+            };
+
+            var data = [trace];
+
+            Plotly.newPlot('myPlot', data, layout);
+        } else {
+            console.error("No data available to display chart.");
+        }
+
+        //Chart2
+        if (chartData2.length > 0 && ranks.length > 0) {
+            var trace2 = {
+                x: ranks,
+                y: chartData2,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {
+                    color: 'rgba(255, 99, 132, 1)',
+                    width: 2
+                },
+                marker: {
+                    size: 4
+                },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(255, 99, 132, 0.2)'
+            };
+
+            var layout2 = {
+                title: 'Value Change vs Rank',
+                xaxis: {
+                    title: 'Rank'
+                },
+                yaxis: {
+                    title: 'Value Change'
+                },
+                margin: { t: 50 },
+                responsive: true  // Make chart responsive
+            };
+
+            var data2 = [trace2];
+
+            Plotly.newPlot('myPlot2', data2, layout2);
+        } else {
+            console.error("No data available to display second chart.");
+        }
+
+        //Chart3
+
+        var maxValue = Array.isArray(chartData2) && chartData2.length > 0 ? Math.max(...chartData2) : 0;
+
+        var trace3 = {
+            x: chartData2,
+            type: 'histogram',
+            xbins: {
+                start: 0,  
+                end: maxValue,  
+                size: 5
+            },
+            marker: {
+                color: 'rgba(100, 149, 237, 0.7)',  
+            },
+
+        };
+
+        var layout3 = {
+            title: 'Value Change Histogram',
+            xaxis: {
+                title: 'Value Change'
+
+            },
+            yaxis: {
+                title: 'Frequency'
+            },
+            margin: { t: 50 },
+            responsive: true  
+        };
+
+         var data3 = [trace3];
+
+         Plotly.newPlot('myPlot3', data3, layout3);
+
+        // Event listener for chart resizing
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('myPlot');
+            Plotly.Plots.resize('myPlot2');
+            Plotly.Plots.resize('myPlot3');
+        });
+
+
+        function downloadData() {
+
+            const chartDataCSV = chartData.join(',') + '\n';
+            const chartData2CSV = chartData2.join(',') + '\n';
+            const chartData3CSV = chartData3.join(',') + '\n';
+            const ranksCSV = ranks.join(',') + '/n';
+
+            const csvContent = "data:text/csv;charset=utf-8," +
+                "ChartData1,ChartData2,ChartData3\n" +
+                chartDataCSV + chartData2CSV + chartData3CSV + ranksCSV;
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "chart_data.csv");
+            document.body.appendChild(link);
+
+            link.click();
+
+            // Clean up
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+
+</html>
